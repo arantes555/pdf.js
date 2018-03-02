@@ -172,6 +172,13 @@ function getViewerConfiguration() {
     openFileInputName: 'fileInput',
     debuggerScriptPath: './debugger.js',
     defaultUrl: DEFAULT_URL,
+    isViewerEmbedded: false,
+    focusPreviewer: true,
+    allowPrinting: true,
+    allowDownload: true,
+    allowBookmark: true,
+    allowUrlQuery: true,
+    allowOpenFile: true,
   };
 }
 

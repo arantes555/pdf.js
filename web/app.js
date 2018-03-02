@@ -152,6 +152,12 @@ let PDFViewerApplication = {
     enablePrintAutoRotate: false,
   },
   isViewerEmbedded: (window.parent !== window),
+  shouldFocusPreviewer: (window.parent === window),
+  allowPrinting: true,
+  allowDownload: true,
+  allowBookmark: true,
+  allowUrlQuery: true,
+  allowOpenFile: true,
   url: '',
   baseUrl: '',
   externalServices: DefaultExternalServices,
@@ -164,9 +170,32 @@ let PDFViewerApplication = {
 
     configure(PDFJS);
     this.appConfig = appConfig;
+    if (appConfig.isViewerEmbedded === true) {
+      this.isViewerEmbedded = true;
+    }
+    if (appConfig.focusPreviewer === true) {
+      this.shouldFocusPreviewer = true;
+    }
+    if (appConfig.allowPrinting === false) {
+      this.allowPrinting = false;
+    }
+    if (appConfig.allowDownload === false) {
+      this.allowDownload = false;
+    }
+    if (appConfig.allowBookmark === false) {
+      this.allowBookmark = false;
+    }
+    if (appConfig.allowUrlQuery === false) {
+      this.allowUrlQuery = false;
+    }
+    if (appConfig.allowOpenFile === false) {
+      this.allowOpenFile = false;
+    }
 
     return this._readPreferences().then(() => {
-      return this._parseHashParameters();
+      if (this.allowUrlQuery !== false) {
+        return this._parseHashParameters();
+      }
     }).then(() => {
       return this._initializeL10n();
     }).then(() => {
@@ -752,10 +781,15 @@ let PDFViewerApplication = {
       }
     }
 
-    if (this.url && isFileSchema(this.url)) {
-      let appConfig = this.appConfig;
+    let appConfig = this.appConfig;
+    if ((this.url && isFileSchema(this.url)) || this.allowDownload === false) {
       appConfig.toolbar.download.setAttribute('hidden', 'true');
       appConfig.secondaryToolbar.downloadButton.setAttribute('hidden', 'true');
+    }
+    if (this.allowBookmark === false) {
+      appConfig.toolbar.viewBookmark.setAttribute('hidden', 'true');
+      appConfig.secondaryToolbar.viewBookmarkButton
+        .setAttribute('hidden', 'true');
     }
 
     let loadingTask = getDocument(parameters);
@@ -1072,7 +1106,7 @@ let PDFViewerApplication = {
 
         // Make all navigation keys work on document load,
         // unless the viewer is embedded in a web page.
-        if (!this.isViewerEmbedded) {
+        if (this.shouldFocusPreviewer) {
           pdfViewer.focus();
         }
         return pagesPromise;
@@ -1127,7 +1161,7 @@ let PDFViewerApplication = {
     });
 
     pagesPromise.then(() => {
-      if (!this.supportsPrinting) {
+      if (!this.supportsPrinting || !this.allowPrinting) {
         return;
       }
       pdfDocument.getJavaScript().then((javaScript) => {
@@ -1245,13 +1279,15 @@ let PDFViewerApplication = {
     this.isInitialViewSet = true;
     this.pdfSidebar.setInitialView(sidebarView);
 
-    if (this.initialBookmark) {
+    if (this.initialBookmark &&
+      (this.allowBookmark || !this.initialBookmark.includes('='))) {
       setRotation(this.initialRotation);
       delete this.initialRotation;
 
       this.pdfLinkService.setHash(this.initialBookmark);
       this.initialBookmark = null;
-    } else if (storedHash) {
+    } else if (storedHash &&
+      (this.allowBookmark || !storedHash.includes('='))) {
       setRotation(rotation);
 
       this.pdfLinkService.setHash(storedHash);
@@ -1578,17 +1614,22 @@ function webViewerInitialized() {
   let appConfig = PDFViewerApplication.appConfig;
   let file;
   if (typeof PDFJSDev === 'undefined' || PDFJSDev.test('GENERIC')) {
-    let queryString = document.location.search.substring(1);
-    let params = parseQueryString(queryString);
-    file = 'file' in params ? params.file : appConfig.defaultUrl;
-    validateFileURL(file);
+    if (PDFViewerApplication.allowUrlQuery === false) {
+      file = appConfig.defaultUrl;
+    } else {
+      let queryString = document.location.search.substring(1);
+      let params = parseQueryString(queryString);
+      file = 'file' in params ? params.file : appConfig.defaultUrl;
+      validateFileURL(file);
+    }
   } else if (PDFJSDev.test('FIREFOX || MOZCENTRAL')) {
     file = window.location.href.split('#')[0];
   } else if (PDFJSDev.test('CHROME')) {
     file = appConfig.defaultUrl;
   }
 
-  if (typeof PDFJSDev === 'undefined' || PDFJSDev.test('GENERIC')) {
+  if ((typeof PDFJSDev === 'undefined' || PDFJSDev.test('GENERIC')) &&
+    PDFViewerApplication.allowOpenFile !== false) {
     let fileInput = document.createElement('input');
     fileInput.id = appConfig.openFileInputName;
     fileInput.className = 'fileInput';
@@ -1629,7 +1670,8 @@ function webViewerInitialized() {
     });
   }
 
-  if (!PDFViewerApplication.supportsPrinting) {
+  if (!PDFViewerApplication.supportsPrinting ||
+    !PDFViewerApplication.allowPrinting) {
     appConfig.toolbar.print.classList.add('hidden');
     appConfig.secondaryToolbar.printButton.classList.add('hidden');
   }
@@ -1870,6 +1912,9 @@ function webViewerResize() {
 function webViewerHashchange(evt) {
   let hash = evt.hash;
   if (!hash) {
+    return;
+  }
+  if (PDFViewerApplication.allowBookmark === false && hash.includes('=')) {
     return;
   }
   if (!PDFViewerApplication.isInitialViewSet) {
