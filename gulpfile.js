@@ -56,6 +56,7 @@ var GH_PAGES_DIR = BUILD_DIR + 'gh-pages/';
 var SRC_DIR = 'src/';
 var LIB_DIR = BUILD_DIR + 'lib/';
 var DIST_DIR = BUILD_DIR + 'dist/';
+var VIEWER_DIR = BUILD_DIR + 'viewer/';
 var COMMON_WEB_FILES = [
   'web/images/*.{png,svg,gif,cur}',
   'web/debugger.js'
@@ -64,6 +65,7 @@ var MOZCENTRAL_DIFF_FILE = 'mozcentral.diff';
 
 var REPO = 'git@github.com:mozilla/pdf.js.git';
 var DIST_REPO_URL = 'https://github.com/mozilla/pdfjs-dist';
+var VIEWER_REPO_URL = 'https://github.com/arantes555/pdfjs-viewer';
 
 var builder = require('./external/builder/builder.js');
 
@@ -1260,6 +1262,92 @@ gulp.task('gh-pages-git', ['gh-pages-prepare', 'wintersmith'], function () {
 });
 
 gulp.task('web', ['gh-pages-prepare', 'wintersmith', 'gh-pages-git']);
+
+gulp.task('viewer-pre', ['generic', 'lib', 'minified'], function() {
+  var VERSION = getVersionJSON().version;
+
+  console.log();
+  console.log('### Cloning baseline distribution');
+
+  rimraf.sync(VIEWER_DIR);
+  mkdirp.sync(VIEWER_DIR);
+  safeSpawnSync('git', ['clone', '--depth', '1', VIEWER_REPO_URL, VIEWER_DIR]);
+
+  console.log();
+  console.log('### Overwriting all files');
+  rimraf.sync(path.join(VIEWER_DIR, '*'));
+
+  // Rebuilding manifests
+  var VIEWER_NAME = 'pdfjs-viewer';
+  var VIEWER_DESCRIPTION = 'Mozilla\'s PDF.js viewer.';
+  var VIEWER_KEYWORDS = ['Mozilla', 'pdf', 'pdf.js'];
+  var VIEWER_HOMEPAGE = 'http://mozilla.github.io/pdf.js/';
+  var VIEWER_BUGS_URL = 'https://github.com/mozilla/pdf.js/issues';
+  var VIEWER_LICENSE = 'Apache-2.0';
+  var npmManifest = {
+    name: VIEWER_NAME,
+    version: VERSION,
+    main: 'web/viewer.js',
+    description: VIEWER_DESCRIPTION,
+    keywords: VIEWER_KEYWORDS,
+    homepage: VIEWER_HOMEPAGE,
+    bugs: VIEWER_BUGS_URL,
+    license: VIEWER_LICENSE,
+    repository: {
+      type: 'git',
+      url: VIEWER_REPO_URL,
+    },
+  };
+  var packageJsonSrc =
+    createStringSource('package.json', JSON.stringify(npmManifest, null, 2));
+  return merge([
+    packageJsonSrc.pipe(gulp.dest(VIEWER_DIR)),
+    vfs.src('external/viewer/**/*',
+      { base: 'external/viewer', stripBOM: false, })
+      .pipe(gulp.dest(VIEWER_DIR)),
+    gulp.src(GENERIC_DIR + 'LICENSE')
+        .pipe(gulp.dest(VIEWER_DIR)),
+    gulp.src([
+      GENERIC_DIR + 'build/pdf.js',
+      GENERIC_DIR + 'build/pdf.js.map',
+      GENERIC_DIR + 'build/pdf.worker.js',
+      GENERIC_DIR + 'build/pdf.worker.js.map',
+    ]).pipe(gulp.dest(VIEWER_DIR + 'build/')),
+    gulp.src(MINIFIED_DIR + 'build/pdf.js')
+        .pipe(rename('pdf.min.js'))
+        .pipe(gulp.dest(VIEWER_DIR + 'build/')),
+    gulp.src(MINIFIED_DIR + 'build/pdf.worker.js')
+        .pipe(rename('pdf.worker.min.js'))
+        .pipe(gulp.dest(VIEWER_DIR + 'build/')),
+    gulp.src(GENERIC_DIR + 'web/**/*', { base: GENERIC_DIR + 'web', })
+        .pipe(gulp.dest(VIEWER_DIR + 'web/')),
+    gulp.src(MINIFIED_DIR + 'web/pdf.viewer.js')
+        .pipe(rename('jviewer.min.js'))
+        .pipe(gulp.dest(VIEWER_DIR + 'web/')),
+  ]);
+});
+
+gulp.task('viewer-repo-git', ['viewer-pre'], function () {
+  var VERSION = getVersionJSON().version;
+
+  console.log();
+  console.log('### Committing changes');
+
+  var reason = process.env['PDFJS_UPDATE_REASON'];
+  var message = 'PDF.js version ' + VERSION + (reason ? ' - ' + reason : '');
+  safeSpawnSync('git', ['add', '*'], { cwd: VIEWER_DIR, });
+  safeSpawnSync('git', ['commit', '-am', message], { cwd: VIEWER_DIR, });
+  safeSpawnSync('git', ['tag', '-a', 'v' + VERSION, '-m', message],
+    { cwd: VIEWER_DIR, });
+
+  console.log();
+  console.log('Done. Push with');
+  console.log('  cd ' + VIEWER_DIR + '; ' +
+    'git push --tags ' + VIEWER_REPO_URL + ' master');
+  console.log();
+});
+
+gulp.task('viewer', ['viewer-repo-git']);
 
 gulp.task('dist-pre', ['generic', 'components', 'lib', 'minified'], function() {
   var VERSION = getVersionJSON().version;
