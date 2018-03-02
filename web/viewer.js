@@ -54,7 +54,16 @@ if (typeof PDFJSDev !== 'undefined' && PDFJSDev.test('CHROME || GENERIC')) {
   require('./pdf_print_service.js');
 }
 
-function getViewerConfiguration() {
+function getViewerConfiguration({
+                                  defaultUrl = DEFAULT_URL,
+                                  isViewerEmbedded = false,
+                                  focusPreviewer = true,
+                                  allowPrinting = true,
+                                  allowDownload = true,
+                                  allowBookmark = true,
+                                  allowUrlQuery = true,
+                                  allowOpenFile = true,
+                                } = {}) {
   return {
     appContainer: document.body,
     mainContainer: document.getElementById('viewerContainer'),
@@ -171,19 +180,19 @@ function getViewerConfiguration() {
     printContainer: document.getElementById('printContainer'),
     openFileInputName: 'fileInput',
     debuggerScriptPath: './debugger.js',
-    defaultUrl: DEFAULT_URL,
-    isViewerEmbedded: false,
-    focusPreviewer: true,
-    allowPrinting: true,
-    allowDownload: true,
-    allowBookmark: true,
-    allowUrlQuery: true,
-    allowOpenFile: true,
+    defaultUrl,
+    isViewerEmbedded,
+    focusPreviewer,
+    allowPrinting,
+    allowDownload,
+    allowBookmark,
+    allowUrlQuery,
+    allowOpenFile,
   };
 }
 
-function webViewerLoad() {
-  let config = getViewerConfiguration();
+function webViewerLoad(settings) {
+  let config = getViewerConfiguration(settings);
   if (typeof PDFJSDev === 'undefined' || !PDFJSDev.test('PRODUCTION')) {
     Promise.all([
       SystemJS.import('pdfjs-web/app'),
@@ -199,9 +208,4 @@ function webViewerLoad() {
   }
 }
 
-if (document.readyState === 'interactive' ||
-    document.readyState === 'complete') {
-  webViewerLoad();
-} else {
-  document.addEventListener('DOMContentLoaded', webViewerLoad, true);
-}
+window.PDFViewer = webViewerLoad;
