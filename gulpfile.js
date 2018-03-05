@@ -24,6 +24,7 @@ var gulp = require('gulp');
 var rename = require('gulp-rename');
 var replace = require('gulp-replace');
 var transform = require('gulp-transform');
+var embed = require('gulp-image-embed');
 var mkdirp = require('mkdirp');
 var path = require('path');
 var rimraf = require('rimraf');
@@ -554,7 +555,14 @@ function preprocessCSS(source, mode, defines, cleanup) {
   }
 
   var i = source.lastIndexOf('/');
-  return createStringSource(source.substr(i + 1), out);
+  return merge([
+    createStringSource(source.substr(i + 1), out),
+    createStringSource(
+      source.substr(i + 1).replace(/\.css$/, '_embedded.css'), out
+    ).pipe(embed({
+      asset: 'web',
+    })),
+  ]);
 }
 
 function preprocessHTML(source, defines) {
