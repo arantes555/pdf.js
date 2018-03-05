@@ -200,7 +200,7 @@ function webViewerLoad(settings) {
       SystemJS.import('pdfjs-web/pdf_print_service'),
     ]).then(function([app, ...otherModules]) {
       window.PDFViewerApplication = app.PDFViewerApplication;
-      app.PDFViewerApplication.run(config);
+      return app.PDFViewerApplication.run(config);
     });
   }
   window.PDFViewerApplication = pdfjsWebApp.PDFViewerApplication;
