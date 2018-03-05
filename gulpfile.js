@@ -1278,7 +1278,7 @@ gulp.task('viewer-pre', ['generic', 'lib', 'minified'], function() {
   rimraf.sync(path.join(VIEWER_DIR, '*'));
 
   // Rebuilding manifests
-  var VIEWER_NAME = 'pdfjs-viewer';
+  var VIEWER_NAME = 'viewer-pdfjs';
   var VIEWER_DESCRIPTION = 'Mozilla\'s PDF.js viewer.';
   var VIEWER_KEYWORDS = ['Mozilla', 'pdf', 'pdf.js'];
   var VIEWER_HOMEPAGE = 'http://mozilla.github.io/pdf.js/';
@@ -1322,7 +1322,7 @@ gulp.task('viewer-pre', ['generic', 'lib', 'minified'], function() {
     gulp.src(GENERIC_DIR + 'web/**/*', { base: GENERIC_DIR + 'web', })
         .pipe(gulp.dest(VIEWER_DIR + 'web/')),
     gulp.src(MINIFIED_DIR + 'web/pdf.viewer.js')
-        .pipe(rename('jviewer.min.js'))
+        .pipe(rename('viewer.min.js'))
         .pipe(gulp.dest(VIEWER_DIR + 'web/')),
   ]);
 });

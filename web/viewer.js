@@ -194,7 +194,7 @@ function getViewerConfiguration({
 function webViewerLoad(settings) {
   let config = getViewerConfiguration(settings);
   if (typeof PDFJSDev === 'undefined' || !PDFJSDev.test('PRODUCTION')) {
-    Promise.all([
+    return Promise.all([
       SystemJS.import('pdfjs-web/app'),
       SystemJS.import('pdfjs-web/genericcom'),
       SystemJS.import('pdfjs-web/pdf_print_service'),
@@ -202,10 +202,9 @@ function webViewerLoad(settings) {
       window.PDFViewerApplication = app.PDFViewerApplication;
       app.PDFViewerApplication.run(config);
     });
-  } else {
-    window.PDFViewerApplication = pdfjsWebApp.PDFViewerApplication;
-    pdfjsWebApp.PDFViewerApplication.run(config);
   }
+  window.PDFViewerApplication = pdfjsWebApp.PDFViewerApplication;
+  return pdfjsWebApp.PDFViewerApplication.run(config);
 }
 
 window.PDFViewer = webViewerLoad;
